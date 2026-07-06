@@ -2,19 +2,25 @@
 import 'package:flutter/material.dart';
 import '../models/burbuja_model.dart';
 import 'detalle_burbuja_screen.dart';
+import '../services/database_service.dart'; // Para asegurar el guardado al volver
 
-class BurbujasInicioTab extends StatelessWidget {
+class BurbujasInicioTab extends StatefulWidget {
   final List<Burbuja> burbujas;
   final Function(String) onNuevaBurbuja;
-  final Function(int) onEliminarBurbuja; // <--- Nueva función
+  final Function(int) onEliminarBurbuja;
 
   const BurbujasInicioTab({
     super.key,
     required this.burbujas,
     required this.onNuevaBurbuja,
-    required this.onEliminarBurbuja, // <--- Nueva función
+    required this.onEliminarBurbuja,
   });
 
+  @override
+  State<BurbujasInicioTab> createState() => _BurbujasInicioTabState();
+}
+
+class _BurbujasInicioTabState extends State<BurbujasInicioTab> {
   void _confirmarEliminar(BuildContext context, int index, String nombre) {
     showDialog(
       context: context,
@@ -26,15 +32,12 @@ class BurbujasInicioTab extends StatelessWidget {
             Text('¿Eliminar Espacio?'),
           ],
         ),
-        content: Text('¿Estás seguro de que querés borrar la burbuja "$nombre" y todos sus gastos cargados? Esta acción no se puede deshacer.'),
+        content: Text('¿Estás seguro de que querés borrar la burbuja "$nombre" y todos sus gastos cargados?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCELAR'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR')),
           TextButton(
             onPressed: () {
-              onEliminarBurbuja(index);
+              widget.onEliminarBurbuja(index);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Burbuja "$nombre" eliminada.')),
@@ -61,34 +64,38 @@ class BurbujasInicioTab extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: GridView.builder(
-          itemCount: burbujas.length,
+          itemCount: widget.burbujas.length,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
           ),
           itemBuilder: (context, index) {
-            final burbuja = burbujas[index];
+            final burbuja = widget.burbujas[index];
             return Card(
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               color: Colors.teal.shade50,
-              child: Stack( // Usamos Stack para clavar el tacho arriba a la derecha
+              child: Stack(
                 children: [
                   InkWell(
                     borderRadius: BorderRadius.circular(20),
-                    onTap: () {
-                      Navigator.push(
+                    onTap: () async {
+                      // Esperamos a que el usuario vuelva de la pantalla de detalles
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => DetalleBurbujaScreen(
                             burbuja: burbuja,
                             onGastoModificado: () {
-                              (context as Element).markNeedsBuild();
+                              // Al modificar un gasto guardamos la lista completa en caliente
+                              DatabaseService.guardarBurbujas(widget.burbujas);
                             },
                           ),
                         ),
                       );
+                      // Cuando regresa a la pantalla principal, fuerza el redibujado de los totales
+                      setState(() {});
                     },
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -97,21 +104,13 @@ class BurbujasInicioTab extends StatelessWidget {
                         children: [
                           const Icon(Icons.circle_outlined, size: 36, color: Colors.teal),
                           const SizedBox(height: 8),
-                          Text(
-                            burbuja.nombre,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                          ),
+                          Text(burbuja.nombre, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
-                          Text(
-                            '\$${burbuja.totalAcumulado.toStringAsFixed(2)}',
-                            style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
-                          ),
+                          Text('\$${burbuja.totalAcumulado.toStringAsFixed(2)}', style: TextStyle(fontSize: 13, color: Colors.grey.shade700, fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ),
                   ),
-                  // BOTÓN DEL TACHO DE BASURA:
                   Positioned(
                     top: 4,
                     right: 4,
@@ -142,7 +141,7 @@ class BurbujasInicioTab extends StatelessWidget {
                 TextButton(
                   onPressed: () {
                     if (textController.text.isNotEmpty) {
-                      onNuevaBurbuja(textController.text);
+                      widget.onNuevaBurbuja(textController.text);
                       textController.clear();
                       Navigator.pop(context);
                     }

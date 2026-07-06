@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'models/burbuja_model.dart';
 import 'services/database_service.dart';
 import 'widgets/burbujas_inicio_tab.dart';
-import 'models/graficos_tab.dart';
+import 'models/graficos_tab.dart'; // Tu import corregido a models
 import 'widgets/balances_tab.dart';
 
 void main() {
@@ -36,8 +36,6 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _tabActual = 0;
-  
-  // Arrancamos con listas vacías y un estado de carga
   List<Burbuja> _misBurbujas = [];
   List<BalanceAnual> _historicoBalances = [];
   bool _estaCargando = true;
@@ -45,10 +43,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarDatosDesdeDisco(); // Ejecuta la carga apenas se enciende la app
+    _cargarDatosDesdeDisco();
   }
 
-  // Función para ir a leer el disco del celu
   Future<void> _cargarDatosDesdeDisco() async {
     final burbujasGuardadas = await DatabaseService.cargarBurbujas();
     final balancesGuardados = await DatabaseService.cargarBalances();
@@ -56,12 +53,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     setState(() {
       _misBurbujas = burbujasGuardadas;
       _historicoBalances = balancesGuardados;
-      _estaCargando = false; // Apaga la pantalla de espera
+      _estaCargando = false;
     });
   }
 
-  // Función auxiliar para guardar en segundo plano sin trabar la pantalla
-  void _dispararGuardado() {
+  // Esta función la van a usar todas las pantallas para forzar el guardado inmediato
+  void _guardarDatosEnDisco() {
+    setState(() {}); // Refresca las pantallas de main
     DatabaseService.guardarBurbujas(_misBurbujas);
     DatabaseService.guardarBalances(_historicoBalances);
   }
@@ -69,7 +67,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     if (_estaCargando) {
-      // Mientras lee el disco, muestra un círculo de carga centrado
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
@@ -82,13 +79,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           setState(() {
             _misBurbujas.add(Burbuja(nombre: nombre, gastos: []));
           });
-          _dispararGuardado(); // Guardado automático
+          _guardarDatosEnDisco();
         },
         onEliminarBurbuja: (index) {
           setState(() {
             _misBurbujas.removeAt(index);
           });
-          _dispararGuardado(); // Guardado automático
+          _guardarDatosEnDisco();
         },
       ),
       GraficosTab(burbujas: _misBurbujas), 
@@ -118,20 +115,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               b.gastos.clear();
             }
           });
-          _dispararGuardado(); // Guardado automático del cierre
+          _guardarDatosEnDisco();
         },
       ),
     ];
 
     return Scaffold(
-      body: SafeArea(
-        child: BurbujasInicioTabListener(
-          onChanged: () => setState(() {
-            _dispararGuardado(); // Escucha si se modificó un gasto adentro de la pantalla interna
-          }),
-          child: pestanas[_tabActual],
-        ),
-      ),
+      body: SafeArea(child: pestanas[_tabActual]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tabActual,
         onDestinationSelected: (indice) {
@@ -147,22 +137,4 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
     );
   }
-}
-
-// Un contenedor simple para capturar los refrescos de pantalla cuando volvemos del detalle
-class BurbujasInicioTabListener extends InheritedWidget {
-  final VoidCallback onChanged;
-
-  const BurbujasInicioTabListener({
-    super.key,
-    required this.onChanged,
-    required super.child,
-  });
-
-  static BurbujasInicioTabListener? of(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<BurbujasInicioTabListener>();
-  }
-
-  @override
-  bool updateShouldNotify(covariant InheritedWidget oldWidget) => true;
 }

@@ -1,7 +1,6 @@
 // lib/widgets/detalle_burbuja_screen.dart
 import 'package:flutter/material.dart';
 import '../models/burbuja_model.dart';
-import '../main.dart'; // <--- Agregamos el import para poder usar el Listener
 
 class DetalleBurbujaScreen extends StatefulWidget {
   final Burbuja burbuja;
@@ -32,10 +31,7 @@ class _DetalleBurbujaScreenState extends State<DetalleBurbujaScreen> {
         );
       });
       
-      widget.onGastoModificado(); // Avisa a la pestaña local
-      
-      // MANDATORIO V3: Dispara el guardado automático en el almacenamiento interno
-      BurbujasInicioTabListener.of(context)?.onChanged();
+      widget.onGastoModificado(); // Guarda los datos automáticamente en el almacenamiento
       
       _montoController.clear();
       _detalleController.clear();
@@ -43,7 +39,6 @@ class _DetalleBurbujaScreenState extends State<DetalleBurbujaScreen> {
     }
   }
 
-  // VENTANA EMERGENTE PARA EDITAR EL GASTO SELECCIONADO
   void _abrirEditorGasto(CasillaGasto gasto) {
     final editMontoController = TextEditingController(text: gasto.monto.toString());
     final editDetalleController = TextEditingController(text: gasto.detalle);
@@ -89,11 +84,7 @@ class _DetalleBurbujaScreenState extends State<DetalleBurbujaScreen> {
                   gasto.detalle = nuevoDetalle;
                 });
                 
-                widget.onGastoModificado(); // Avisa a la pestaña local
-                
-                // MANDATORIO V3: Dispara el guardado automático de la modificación en el disco
-                BurbujasInicioTabListener.of(context)?.onChanged();
-                
+                widget.onGastoModificado(); // Guarda los datos modificados automáticamente
                 Navigator.pop(context);
               }
             },
